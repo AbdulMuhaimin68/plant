@@ -5,7 +5,7 @@
 # Ignore virtual environments
 venv/
 env/
-
+migrations/
 # Ignore compiled Python files
 __pycache__/
 *.pyc
