@@ -6,6 +6,11 @@
 venv/
 env/
 migrations/
+migrations/*.pyc
+migrations/*.pyo
+migrations/*.log
+migrations/__pycache__/
+
 # Ignore compiled Python files
 __pycache__/
 *.pyc
