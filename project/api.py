@@ -8,12 +8,7 @@ from project.app.model.User import User
 from project.blueprint.Model import bp as model_bp
 from project.blueprint.User import bp as user_bp
 from flask_jwt_extended import get_jwt
-
-# from project.blueprint.Car import bp as car_bp
-# from project.blueprint.Blogs import bp as blog_bp
-# from project.blueprint.Contact import bp as contact_bp
-# from project.blueprint.Comment import bp as comment_bp
-# from project.app.model.user import User
+from project.app.model.TokenBlockList import TokenBlockList
 
 def create_app():
     app = Flask(__name__)
@@ -33,6 +28,11 @@ def create_app():
         
         user = User.query.get(user_id)
         return user
+    
+    @jwt.token_in_blocklist_loader
+    def check_if_token_in_blocklist(jwt_header, jwt_payload):
+        jti = jwt_payload["jti"]
+        return db.session.query(TokenBlockList).filter_by(jti=jti).first() is not None
 
     @app.errorhandler(422)
     def webargs_error_handler(err):

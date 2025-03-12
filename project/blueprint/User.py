@@ -2,11 +2,13 @@ from sqlite3 import IntegrityError
 from flask import Blueprint, jsonify
 from project.app.bl.UserBLC import UserBLC
 from project.app.bl.LoginBLC import LoginBLC
+from project.app.model.TokenBlockList import TokenBlockList
 from project.app.schema.UserSchema import UserSchema, GetAllUserSchema, GetUserById, LoginSchema
 from webargs.flaskparser import use_args, parser
 from marshmallow import fields
 from marshmallow import ValidationError
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
+from project.app.db import db
 
 bp = Blueprint("user", __name__)
 
@@ -84,3 +86,12 @@ def login(args):
         return jsonify({"Error":e.orig.args[1]}), 422
     except Exception as e:
         return jsonify(str(e)),422
+    
+@bp.route("/logout", methods=["POST"])
+@jwt_required()  # Require JWT authentication
+def logout():
+    jti = get_jwt()["jti"]  # Get JWT ID from token
+    db.session.add(TokenBlockList(jti=jti))  # Add to blocklist
+    db.session.commit()
+    
+    return jsonify({"message": "Logout successful"}), 200
