@@ -2,13 +2,16 @@ from sqlite3 import IntegrityError
 from flask import Blueprint, jsonify
 from project.app.bl.UserBLC import UserBLC
 from project.app.bl.LoginBLC import LoginBLC
+from project.app.model.ActiveUsers import ActiveUserSession
 from project.app.model.TokenBlockList import TokenBlockList
+from project.app.model.User import User
 from project.app.schema.UserSchema import UserSchema, GetAllUserSchema, GetUserById, LoginSchema
 from webargs.flaskparser import use_args, parser
 from marshmallow import fields
 from marshmallow import ValidationError
 from flask_jwt_extended import get_jwt, jwt_required, get_jwt_identity
 from project.app.db import db
+from project.app.bl.Active_user_bl import Actives
 
 bp = Blueprint("user", __name__)
 
@@ -73,14 +76,12 @@ def delete_user(args):
         return jsonify(res), 200
     except Exception as e:
         return jsonify({"error!": str(e)}), 500
-
-
+    
 @bp.route('/login', methods=['POST'])
 @use_args(LoginSchema(), location='json')
 def login(args):    
     try:
         result = LoginBLC.login(args)
-        # breakpoint()
         return jsonify({"result":result})
     except IntegrityError as e:
         return jsonify({"Error":e.orig.args[1]}), 422
@@ -88,10 +89,38 @@ def login(args):
         return jsonify(str(e)),422
     
 @bp.route("/logout", methods=["POST"])
-@jwt_required()  # Require JWT authentication
+@jwt_required()
 def logout():
-    jti = get_jwt()["jti"]  # Get JWT ID from token
-    db.session.add(TokenBlockList(jti=jti))  # Add to blocklist
-    db.session.commit()
-    
+    jti = get_jwt()["jti"]
+    user_id = get_jwt_identity()
+
+    session = db.session
+    active_session = session.query(ActiveUserSession).filter_by(user_id=user_id).first()
+    if active_session:
+        active_session.is_active = False
+
+    session.add(TokenBlockList(jti=jti))
+    session.commit()
+
     return jsonify({"message": "Logout successful"}), 200
+
+@bp.route("/api/active-users", methods=["GET"])
+def get_active_users():
+    active = Actives.get_active_users()
+
+    return jsonify({
+        "active_user_count": len(active),
+        "active_users": [
+            {
+                "user_id": user.user_id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role
+            }
+            for user in active
+        ]
+    }), 200
+
+
+
+    
